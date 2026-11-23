@@ -29,6 +29,8 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Hiragino Sans',sans-serif;bac
 .sort-btn.active{background:#0369a1;color:#fff;border-color:#0369a1}
 .filter-btn{font-size:11px;padding:4px 12px;border-radius:14px;border:1px solid #94a3b8;background:#fff;color:#475569;cursor:pointer;white-space:nowrap;font-weight:600}
 .filter-btn.on{background:#0f4c81;color:#fff;border-color:#0f4c81}
+.check-btn{background:none;border:none;font-size:20px;cursor:pointer;color:#d1d5db;line-height:1;padding:0;margin-bottom:4px}
+.check-btn.checked{color:#f59e0b}
 
 /* カード */
 .card{background:#fff;border-radius:12px;padding:14px;box-shadow:0 1px 4px rgba(0,0,0,.08);border-left:4px solid #e0e0e0}
@@ -165,6 +167,8 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Hiragino Sans',sans-serif;bac
   <button class="sort-btn"        id="sort-funda"   onclick="setSort('funda')">📊 ②ファンダで有利</button>
   <button class="sort-btn"        id="sort-upside"  onclick="setSort('upside')">🎯 ③上値余地が大きい</button>
   <button class="filter-btn" id="filter-reversal" onclick="toggleFilter()" style="margin-left:8px">📈 下げ止まり+上昇フィルター</button>
+  <button class="sort-btn"  id="sort-checked"  onclick="setSort('checked')" style="margin-left:4px">⭐ チェック済み</button>
+  <button class="filter-btn" id="filter-checked-only" onclick="toggleCheckedFilter()" style="margin-left:4px">☑ チェックのみ</button>
 </div>
 
 <div class="content"><div id="stock-list"></div></div>
@@ -175,10 +179,24 @@ const DATA    = {"entries": [{"code": "8918", "name": "ランド", "sector": "",
 const UPDATED = "2026-11-23T20:12:10.767645";
 let curSort   = 'bottom';
 let filterOn  = false;
+const CHECKED_KEY = 'uneri_checked';
+let checkedCodes = new Set(JSON.parse(localStorage.getItem(CHECKED_KEY) || '[]'));
+let checkedOnly = false;
+
+function toggleCheck(code, el) {
+  if (checkedCodes.has(code)) { checkedCodes.delete(code); el.textContent = '☆'; el.classList.remove('checked'); }
+  else { checkedCodes.add(code); el.textContent = '★'; el.classList.add('checked'); }
+  localStorage.setItem(CHECKED_KEY, JSON.stringify([...checkedCodes]));
+}
+function toggleCheckedFilter() {
+  checkedOnly = !checkedOnly;
+  document.getElementById('filter-checked-only').classList.toggle('on', checkedOnly);
+  render();
+}
 
 function setSort(mode){
   curSort = mode;
-  ['bottom','funda','upside'].forEach(m =>
+  ['bottom','funda','upside','checked'].forEach(m =>
     document.getElementById('sort-'+m).classList.toggle('active', m === mode)
   );
   render();
@@ -253,12 +271,14 @@ function render(){
   let list   = DATA.entries || [];
   const rankMap = computeRanks(list);
 
-  if (filterOn) list = list.filter(isBottomReversal);
-  if (q)        list = list.filter(s => s.name.toLowerCase().includes(q) || s.code.includes(q));
+  if (filterOn)   list = list.filter(isBottomReversal);
+  if (checkedOnly) list = list.filter(s => checkedCodes.has(s.code));
+  if (q)          list = list.filter(s => s.name.toLowerCase().includes(q) || s.code.includes(q));
 
-  if (curSort === 'funda')       list.sort((a,b) => fundamentalScore(b)   - fundamentalScore(a));
-  else if (curSort === 'upside') list.sort((a,b) => upsidePctScore(b)     - upsidePctScore(a));
-  else                           list.sort((a,b) => bottomStoppedScore(b) - bottomStoppedScore(a));
+  if (curSort === 'funda')        list.sort((a,b) => fundamentalScore(b)   - fundamentalScore(a));
+  else if (curSort === 'upside')  list.sort((a,b) => upsidePctScore(b)     - upsidePctScore(a));
+  else if (curSort === 'checked') list.sort((a,b) => (checkedCodes.has(b.code)?1:0) - (checkedCodes.has(a.code)?1:0));
+  else                            list.sort((a,b) => bottomStoppedScore(b) - bottomStoppedScore(a));
 
   const el = document.getElementById('stock-list');
   if (!list.length) {
@@ -470,6 +490,7 @@ function renderCard(s, rank, ranks){
         <div class="ext-links">${links}</div>
       </div>
       <div class="card-header-right">
+        <button class="check-btn ${checkedCodes.has(s.code)?'checked':''}" onclick="toggleCheck('${s.code}',this)">${checkedCodes.has(s.code)?'★':'☆'}</button>
         <div class="price-val">¥${priceStr}</div>
         <div class="change-val ${chgCls}">${chgStr}</div>
       </div>
