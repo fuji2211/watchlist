@@ -189,6 +189,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Hiragino Sans',sans-serif;bac
   <button class="sort-btn"        id="sort-bottom"   onclick="setSort('bottom')">📉 ①底値付近</button>
   <button class="sort-btn"        id="sort-reversal" onclick="setSort('reversal')">📈 ②底値反発確認</button>
   <button class="sort-btn"        id="sort-upside"   onclick="setSort('upside')">🎯 ③上値余地</button>
+  <button class="sort-btn"        id="sort-status"   onclick="setSort('status')">🔵 エントリー状況</button>
 </div>
 <div class="content"><div id="stock-list"></div></div>
 <button class="scroll-top" id="scroll-top" onclick="window.scrollTo({top:0,behavior:'smooth'})">↑</button>
@@ -249,7 +250,7 @@ function nextEarningsApprox(fiscalMonth) {
 
 function setSort(mode){
   curSort = mode;
-  ['funda','bottom','reversal','upside'].forEach(m =>
+  ['funda','bottom','reversal','upside','status'].forEach(m =>
     document.getElementById('sort-'+m).classList.toggle('active', m === mode)
   );
   render();
@@ -338,6 +339,8 @@ function render(){
     filtered.sort((a,b) => (fundamentalScore(b)*3+(b.reversal_score||0)) - (fundamentalScore(a)*3+(a.reversal_score||0)));
   } else if (curSort === 'upside') {
     filtered.sort((a,b) => upsideScore(b) - upsideScore(a));
+  } else if (curSort === 'status') {
+    filtered.sort((a,b) => techScore(b) - techScore(a));
   } else {
     filtered.sort((a,b) => fundamentalScore(b) - fundamentalScore(a));
   }
