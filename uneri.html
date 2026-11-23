@@ -206,8 +206,11 @@ function fundamentalScore(s) {
 
 function bottomStoppedScore(s) {
   const box = s.box || {};
-  const pos = box.current_position != null ? box.current_position : 0.5;
-  // pos>0.5の銘柄は反発スコアを大幅減殺（天井圏は底値ソートで上位に来ない）
+  const rawPos = box.current_position != null ? box.current_position : 0.5;
+  // サポート下抜け（ボックス崩れ）はスコア0
+  if (rawPos < -0.15) return 0;
+  const pos = Math.max(0, Math.min(1, rawPos));  // [0,1]にクランプ
+  // pos>0.5の銘柄（天井圏）は反発スコアを減殺
   const posFactor = Math.max(0, 1 - pos * 2);
   return (s.reversal_score || 0) * 1.5 * posFactor
        + (1 - pos) * 50
