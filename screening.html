@@ -139,6 +139,10 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Hiragino Sans',sans-serif;bac
 .sort-label{font-size:11px;color:#64748b;white-space:nowrap}
 .sort-btn{font-size:11px;padding:4px 12px;border-radius:14px;border:1px solid #cbd5e1;background:#fff;color:#475569;cursor:pointer;white-space:nowrap;font-weight:600;transition:all .15s}
 .sort-btn.active{background:#3b82f6;color:#fff;border-color:#3b82f6}
+.check-btn{background:none;border:none;font-size:20px;cursor:pointer;color:#d1d5db;line-height:1;padding:0;margin-bottom:4px}
+.check-btn.checked{color:#f59e0b}
+.filter-btn{font-size:11px;padding:4px 12px;border-radius:14px;border:1px solid #cbd5e1;background:#fff;color:#475569;cursor:pointer;white-space:nowrap;font-weight:600}
+.filter-btn.on{background:#f59e0b;color:#fff;border-color:#f59e0b}
 /* ランクテーブル */
 .rank-table{display:flex;flex-wrap:wrap;gap:6px;margin:5px 0 6px;padding:5px 9px;background:#f8fafc;border-radius:7px;border:1px solid #e2e8f0}
 .rank-item{font-size:10px;color:#64748b;display:flex;align-items:center;gap:2px}
@@ -190,6 +194,8 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Hiragino Sans',sans-serif;bac
   <button class="sort-btn"        id="sort-reversal" onclick="setSort('reversal')">📈 ②底値反発確認</button>
   <button class="sort-btn"        id="sort-upside"   onclick="setSort('upside')">🎯 ③上値余地</button>
   <button class="sort-btn"        id="sort-status"   onclick="setSort('status')">🔵 エントリー状況</button>
+  <button class="sort-btn"        id="sort-checked"  onclick="setSort('checked')">⭐ チェック済み</button>
+  <button class="filter-btn" id="filter-checked-only" onclick="toggleCheckedFilter()" style="margin-left:8px">☑ チェックのみ</button>
 </div>
 <div class="content"><div id="stock-list"></div></div>
 <button class="scroll-top" id="scroll-top" onclick="window.scrollTo({top:0,behavior:'smooth'})">↑</button>
@@ -201,6 +207,20 @@ const DATA = {"candidates": [{"code": "1434", "name": "ＪＥＳＣＯホール�
 const UPDATED = "2026-11-23T19:02:55.770198";
 let curTab = 'candidates';
 let curSort = 'funda';
+const CHECKED_KEY = 'screening_checked';
+let checkedCodes = new Set(JSON.parse(localStorage.getItem(CHECKED_KEY) || '[]'));
+let checkedOnly = false;
+
+function toggleCheck(code, el) {
+  if (checkedCodes.has(code)) { checkedCodes.delete(code); el.textContent = '☆'; el.classList.remove('checked'); }
+  else { checkedCodes.add(code); el.textContent = '★'; el.classList.add('checked'); }
+  localStorage.setItem(CHECKED_KEY, JSON.stringify([...checkedCodes]));
+}
+function toggleCheckedFilter() {
+  checkedOnly = !checkedOnly;
+  document.getElementById('filter-checked-only').classList.toggle('on', checkedOnly);
+  render();
+}
 
 
 function nextEarningsApprox(fiscalMonth) {
@@ -250,7 +270,7 @@ function nextEarningsApprox(fiscalMonth) {
 
 function setSort(mode){
   curSort = mode;
-  ['funda','bottom','reversal','upside','status'].forEach(m =>
+  ['funda','bottom','reversal','upside','status','checked'].forEach(m =>
     document.getElementById('sort-'+m).classList.toggle('active', m === mode)
   );
   render();
@@ -332,6 +352,7 @@ function render(){
   const rankMap = computeRanks(list);
 
   let filtered = q ? list.filter(s => s.name.toLowerCase().includes(q) || s.code.includes(q)) : [...list];
+  if (checkedOnly) filtered = filtered.filter(s => checkedCodes.has(s.code));
 
   if (curSort === 'bottom') {
     filtered.sort((a,b) => (fundamentalScore(b)*3+(b.bottom_proximity_score||0)) - (fundamentalScore(a)*3+(a.bottom_proximity_score||0)));
@@ -341,6 +362,8 @@ function render(){
     filtered.sort((a,b) => upsideScore(b) - upsideScore(a));
   } else if (curSort === 'status') {
     filtered.sort((a,b) => techScore(b) - techScore(a));
+  } else if (curSort === 'checked') {
+    filtered.sort((a,b) => (checkedCodes.has(b.code)?1:0) - (checkedCodes.has(a.code)?1:0));
   } else {
     filtered.sort((a,b) => fundamentalScore(b) - fundamentalScore(a));
   }
@@ -679,6 +702,7 @@ function renderCard(s, rank, ranks){
         <div class="ext-links">${links}</div>
       </div>
       <div class="card-header-right">
+        <button class="check-btn ${checkedCodes.has(s.code)?'checked':''}" onclick="toggleCheck('${s.code}',this)">${checkedCodes.has(s.code)?'★':'☆'}</button>
         <div class="price-val">¥${priceStr}</div>
         <div class="change-val ${chgCls}">${chgStr}</div>
       </div>
