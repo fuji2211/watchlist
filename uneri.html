@@ -37,6 +37,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Hiragino Sans',sans-serif;bac
 .card.buy{border-left-color:#22c55e}
 .card.pass{border-left-color:#ef4444}
 .card.check{border-left-color:#f59e0b}
+.card.none{border-left-color:#d1d5db}
 .card-header{display:flex;align-items:flex-start;gap:8px;margin-bottom:8px}
 .card-header-left{flex:1;min-width:0}
 .card-header-right{text-align:right;flex-shrink:0}
@@ -44,6 +45,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Hiragino Sans',sans-serif;bac
 .verdict-buy{background:#dcfce7;color:#15803d;border:1px solid #86efac}
 .verdict-pass{background:#fee2e2;color:#dc2626;border:1px solid #fca5a5}
 .verdict-check{background:#fef9c3;color:#a16207;border:1px solid #fde047}
+.verdict-none{background:#f3f4f6;color:#9ca3af;border:1px solid #e5e7eb}
 .name-row{display:flex;align-items:baseline;gap:6px;flex-wrap:wrap;margin-bottom:4px}
 .name{font-size:16px;font-weight:800}
 .code{font-size:11px;color:#999}
@@ -213,7 +215,7 @@ function toggleFilter(){
 function fundamentalScore(s) {
   const v       = s.analysis || {};
   const verdict = v.verdict || '';
-  const verdictScore = verdict.includes('買い') ? 40 : verdict.includes('見送') ? 0 : 15;
+  const verdictScore = verdict.includes('買い') ? 40 : verdict.includes('見送') ? 0 : verdict ? 15 : 20;
   const passScore    = (s.roe != null && s.roe >= 8 ? 8 : 0)
                      + (s.op_margin != null && s.op_margin >= 5 ? 8 : 0)
                      + (s.equity_ratio != null && s.equity_ratio >= 30 ? 8 : 0)
@@ -300,9 +302,10 @@ function render(){
 
 function renderCard(s, rank, ranks){
   const v          = s.analysis || {};
-  const verdict    = v.verdict || '要確認';
-  const verdictCls = verdict.includes('買い') ? 'buy' : verdict.includes('見送') ? 'pass' : 'check';
-  const verdictIcon = verdict.includes('買い') ? '🟢' : verdict.includes('見送') ? '🔴' : '🟡';
+  const verdict    = v.verdict || '';
+  const verdictCls = verdict.includes('買い') ? 'buy' : verdict.includes('見送') ? 'pass' : verdict ? 'check' : 'none';
+  const verdictIcon = verdict.includes('買い') ? '🟢' : verdict.includes('見送') ? '🔴' : verdict ? '🟡' : '⬜';
+  const verdictLabel = verdict || '未分析';
   const box        = s.box || {};
   const price      = s.current_price || 0;
   const priceStr   = price ? Math.round(price).toLocaleString() : '---';
@@ -414,7 +417,7 @@ function renderCard(s, rank, ranks){
   // AI分析ブロック（うねり版）
   const analysisHtml = (() => {
     if (!v.box_quality && !v.entry_timing) return '';
-    const vl = `<div class="verdict-line ${verdictCls}">${verdictIcon} ${verdict}：${v.verdict_reason||''}</div>`;
+    const vl = `<div class="verdict-line ${verdictCls}">${verdictIcon} ${verdictLabel}：${v.verdict_reason||''}</div>`;
     return `<div class="analysis-block">
       <div class="analysis-title">🤖 AI分析（うねり視点）</div>
       <div class="analysis-item"><span class="ai-num">①</span><span class="ai-text"><b>BOX品質：</b>${v.box_quality||''}</span></div>
@@ -478,7 +481,7 @@ function renderCard(s, rank, ranks){
   return `<div class="card ${verdictCls}">
     <div class="card-header">
       <div class="card-header-left">
-        <span class="verdict-badge verdict-${verdictCls}">${verdictIcon} ${verdict}</span>
+        <span class="verdict-badge verdict-${verdictCls}">${verdictIcon} ${verdictLabel}</span>
         <div class="name-row">
           ${rank ? `<span class="rank-badge ${rank===1?'rank-1':rank===2?'rank-2':rank===3?'rank-3':'rank-n'}">${rank}</span>` : ''}
           <span class="name">${s.name||s.code}</span>
